@@ -1,0 +1,52 @@
+version: '3.8'
+
+services:
+  api:
+    build: .
+    container_name: credit-risk-api
+    ports:
+      - "8000:8000"
+    environment:
+      - MODEL_PATH=/app/models/logistic_regression_model.joblib
+      - ENVIRONMENT=development
+    volumes:
+      - ./models:/app/models
+      - ./data:/app/data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    networks:
+      - credit-risk-network
+
+  # Optional: Add monitoring with Prometheus
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml
+    networks:
+      - credit-risk-network
+    profiles:
+      - monitoring
+
+  # Optional: Add visualization with Grafana
+  grafana:
+    image: grafana/grafana:latest
+    container_name: grafana
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+    networks:
+      - credit-risk-network
+    profiles:
+      - monitoring
+
+networks:
+  credit-risk-network:
+    driver: bridge

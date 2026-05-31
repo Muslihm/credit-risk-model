@@ -1,0 +1,47 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.so
+*.egg
+*.egg-info/
+dist/
+build/
+
+# Virtual environments
+venv/
+env/
+ENV/
+.venv
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Data files (important for credit risk - data is sensitive)
+data/raw/
+data/processed/
+*.csv
+*.parquet
+*.pkl
+*.joblib
+
+# Jupyter notebooks
+.ipynb_checkpoints/
+notebooks/*.ipynb  # Keep structure but ignore content
+
+# Environment variables
+.env
+.env.local
+
+# Model artifacts
+models/
+*.joblib
+
+# Logs
+logs/
+*.log

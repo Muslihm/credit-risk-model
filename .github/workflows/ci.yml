@@ -1,0 +1,113 @@
+name: CI/CD Pipeline for Credit Risk Model
+
+on:
+  push:
+    branches: [ main, develop, task-* ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+    
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.10'
+    
+    - name: Cache pip packages
+      uses: actions/cache@v3
+      with:
+        path: ~/.cache/pip
+        key: ${{ runner.os }}-pip-${{ hashFiles('requirements.txt') }}
+        restore-keys: |
+          ${{ runner.os }}-pip-
+    
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install pytest-cov flake8 black
+    
+    - name: Lint with flake8
+      run: |
+        flake8 src/ --max-line-length=120 --ignore=E203,W503
+        flake8 tests/ --max-line-length=120 --ignore=E203,W503
+    
+    - name: Check formatting with black
+      run: |
+        black --check --line-length 100 src/ tests/
+    
+    - name: Run tests with coverage
+      run: |
+        pytest tests/ -v --cov=src --cov-report=xml --cov-report=term
+    
+    - name: Upload coverage to Codecov
+      uses: codecov/codecov-action@v3
+      with:
+        file: ./coverage.xml
+        flags: unittests
+    
+    - name: Security scan with bandit
+      run: |
+        pip install bandit
+        bandit -r src/ -ll
+
+  build-docker:
+    runs-on: ubuntu-latest
+    needs: test
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+    
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v2
+    
+    - name: Build Docker image
+      uses: docker/build-push-action@v4
+      with:
+        context: .
+        push: false
+        tags: credit-risk-model:latest
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
+    
+    - name: Run Docker container tests
+      run: |
+        docker build -t credit-risk-model-test .
+        docker run --rm credit-risk-model-test python -c "import src; print('Docker build successful')"
+
+  deploy:
+    runs-on: ubuntu-latest
+    needs: [test, build-docker]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+    
+    - name: Deploy to production
+      run: |
+        echo "Deploying credit risk model to production..."
+        echo "In production, you would add deployment steps here:"
+        echo "  - Push to container registry (Docker Hub, ECR, GCR)"
+        echo "  - Deploy to Kubernetes/Cloud Run/ECS"
+        echo "  - Run database migrations"
+        echo "  - Notify monitoring systems"
+      # Uncomment and configure for actual deployment:
+      # - name: Login to Docker Hub
+      #   uses: docker/login-action@v2
+      #   with:
+      #     username: ${{ secrets.DOCKER_USERNAME }}
+      #     password: ${{ secrets.DOCKER_PASSWORD }}
+      # 
+      # - name: Push to Docker Hub
+      #   run: |
+      #     docker tag credit-risk-model:latest ${{ secrets.DOCKER_USERNAME }}/credit-risk-model:${{ github.sha }}
+      #     docker push ${{ secrets.DOCKER_USERNAME }}/credit-risk-model:${{ github.sha }}
